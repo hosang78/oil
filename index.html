@@ -22,6 +22,8 @@ h1{margin:2px 0 0;font-size:26px;letter-spacing:-.8px;line-height:1.25}
 .chip.ok::before{content:'●';color:var(--good);margin-right:4px}
 .chip.fail::before{content:'●';color:var(--bad);margin-right:4px}
 .chip.stale::before{content:'●';color:#d09a1c;margin-right:4px}
+.legend{font-size:11px;color:var(--muted);align-self:center;margin-left:4px}
+.legend i{font-style:normal;margin:0 2px 0 6px}.legend .g{color:var(--good)}.legend .y{color:#d09a1c}.legend .r{color:var(--bad)}
 section{margin:22px 0}
 h2{font-size:18px;letter-spacing:-.5px;margin:0 0 4px}
 .sub{font-size:13px;color:var(--muted);margin:0 0 12px}
@@ -339,8 +341,11 @@ function renderTiles() {
 
 function renderStatus() {
   const s = D.status || [];
-  $('chips').innerHTML = s.map((x) => `<span class="chip ${x.ok ? 'ok' : 'fail'}" title="${esc(x.message)}">${esc(x.name)}</span>`).join('');
-  $('statusBody').innerHTML = s.map((x) => `<tr><td>${esc(x.name)}</td><td class="${x.ok ? 'okc' : 'failc'}">${x.ok ? '성공' : '실패'}</td><td>${esc(x.message)}</td></tr>`).join('');
+  const cls = (x) => (x.ok ? 'ok' : x.fallback ? 'stale' : 'fail');
+  const word = (x) => (x.ok ? '정상' : x.fallback ? '이번 수집 실패 · 이전값/보조 API로 표시 중' : '실패');
+  $('chips').innerHTML = s.map((x) => `<span class="chip ${cls(x)}" title="${esc(x.name)}: ${word(x)}${x.ok ? '' : ' — ' + esc(x.message)}">${esc(x.name)}</span>`).join('')
+    + '<span class="legend"><i class="g">●</i>정상 <i class="y">●</i>이전값 유지 <i class="r">●</i>실패</span>';
+  $('statusBody').innerHTML = s.map((x) => `<tr><td>${esc(x.name)}</td><td class="${x.ok ? 'okc' : 'failc'}">${x.ok ? '성공' : x.fallback ? '실패(이전값 유지)' : '실패'}</td><td>${esc(x.message)}</td></tr>`).join('');
   $('updated').textContent = D.updatedAtKst ? D.updatedAtKst + ' (한국시간)' : '-';
   const mins = Math.round((Date.now() - new Date(D.updatedAt)) / 60000);
   $('updatedAgo').textContent = Number.isFinite(mins) ? (mins < 60 ? `${mins}분 전` : `${Math.floor(mins / 60)}시간 ${mins % 60}분 전`) : '';

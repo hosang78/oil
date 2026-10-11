@@ -31,7 +31,7 @@ const mask = (s) => {
   return t;
 };
 
-async function getJson(url, { timeout = 25000 } = {}) {
+async function getJsonOnce(url, { timeout = 25000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -47,6 +47,20 @@ async function getJson(url, { timeout = 25000 } = {}) {
     throw new Error(mask(e.name === 'AbortError' ? `응답 없음(${timeout / 1000}초 초과)` : e.cause?.code || e.message));
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// 국내 기관 서버는 해외(GitHub)에서 접속 시 간헐적으로 끊기므로 네트워크 오류는 재시도
+async function getJson(url, opts = {}) {
+  const waits = [2000, 5000];
+  for (let i = 0; ; i++) {
+    try {
+      return await getJsonOnce(url, opts);
+    } catch (e) {
+      const permanent = /^HTTP 4|^JSON 아님/.test(e.message);
+      if (permanent || i >= waits.length) throw e;
+      await new Promise((r) => setTimeout(r, waits[i]));
+    }
   }
 }
 
@@ -222,6 +236,10 @@ if (rExim.ok && (!fx || rExim.data.date > fx.date)) fx = rExim.data;
 if (!fx && prev?.fx) fx = { ...prev.fx, stale: true };
 
 let op = rOp.ok ? rOp.data : prev?.opinet ? { ...prev.opinet, stale: true } : null;
+
+// 실패했지만 이전값·보조 API로 화면 값이 유지된 경우 표시
+const covered = { '오피넷': !!op, EIA: Object.keys(intl).length > 0, FRED: Object.keys(intl).length > 0, '한국은행 ECOS': !!fx, '한국수출입은행': !!fx };
+for (const st of status) if (!st.ok && covered[st.name]) st.fallback = true;
 
 const kst = new Date(now.getTime() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 16);
 const data = {
