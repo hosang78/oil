@@ -69,7 +69,13 @@ h2{font-size:18px;letter-spacing:-.5px;margin:0 0 4px}
 
 /* 시장 데이터 */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.tile{padding:13px 14px;min-width:0}
+.tile{padding:13px 14px;min-width:0;position:relative;cursor:help}
+.tile .q{position:absolute;top:10px;right:10px;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);color:var(--muted);font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1}
+.tile .tip{position:absolute;top:0;left:0;right:0;min-height:100%;box-shadow:0 10px 24px rgba(0,0,0,.25);background:var(--board);color:#e8f0f4;border-radius:6px;padding:13px 14px;font-size:12px;line-height:1.6;opacity:0;visibility:hidden;transition:opacity .15s;z-index:5}
+.tile .tip b{display:block;color:var(--boardInk);font-size:13px;margin-bottom:4px}
+.tile:hover,.tile:focus-visible,.tile.show{z-index:5}
+.tile:hover .tip,.tile:focus-visible .tip,.tile.show .tip{opacity:1;visibility:visible}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tile small{display:block;font-size:11px;color:var(--muted);line-height:1.35}
 .tile strong{display:block;font-size:22px;letter-spacing:-.6px;margin-top:4px;font-variant-numeric:tabular-nums}
 .tile .meta{font-size:11px;color:var(--ink2);margin-top:2px}
@@ -150,7 +156,7 @@ footer{padding:20px 0 40px;font-size:11px;color:var(--muted);border-top:1px soli
 
 <section>
   <h2>③ API로 가져온 시장 데이터</h2>
-  <p class="sub">GitHub Actions가 1시간마다 오피넷·EIA·FRED·한국은행·수출입은행 API에서 수집합니다.</p>
+  <p class="sub">GitHub Actions가 1시간마다 오피넷·EIA·FRED·한국은행·수출입은행 API에서 수집합니다. 카드에 마우스를 올리거나 누르면 설명이 보입니다.</p>
   <div class="tiles" id="tiles"><div class="card msg">데이터를 불러오는 중입니다…</div></div>
   <details><summary>수집 상태 · 출처 보기</summary>
     <div class="card" style="margin-top:8px;overflow-x:auto"><table><thead><tr><th>API</th><th>결과</th><th>내용</th></tr></thead><tbody id="statusBody"></tbody></table></div>
@@ -285,6 +291,16 @@ function spark(hist) {
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
+const TIP = {
+  st_diesel: ['주유소 경유 전국 평균', '오피넷이 전국 주유소 판매가를 모은 오늘 평균입니다. 유류세·부가세가 포함된 소비자 가격으로, 면세유 비교의 기준이 됩니다. 아래 선은 최근 7일 추이입니다.'],
+  st_gasoline: ['주유소 휘발유 전국 평균', '오피넷이 전국 주유소 판매가를 모은 오늘 평균입니다. 세금이 포함된 소비자 가격이며, 아래 선은 최근 7일 추이입니다.'],
+  fx: ['원/달러 환율', '한국은행이 발표하는 매매기준율입니다. 달러로 거래되는 국제 유가를 원화로 바꿀 때 씁니다. 영업일에만 발표되어 주말·공휴일에는 직전 값이 보입니다.'],
+  dubai: ['두바이유', '중동산 원유 가격으로, 한국이 수입하는 원유 가격의 주요 기준입니다. IMF 월평균 자료라 2~3개월 늦게 발표됩니다. 원/L는 정제 전 원유 1배럴(159L)을 환산한 값입니다.'],
+  brent: ['브렌트유', '영국 북해산 원유로, 세계 원유 가격의 대표 기준입니다. 원/L는 정제 전 원유를 환산한 값이라 경유·휘발유 가격과 직접 비교할 수는 없습니다.'],
+  wti: ['WTI', '미국 서부 텍사스산 원유로, 미국 시장의 기준 가격입니다. 원/L는 정제 전 원유를 환산한 값입니다.'],
+  diesel: ['뉴욕항 경유 현물', '미국 뉴욕항에서 거래되는 초저유황 경유의 세전 도매가입니다(1갤런 = 3.785L). 국내 가격은 싱가포르 시장을 따르므로 흐름 참고용입니다.'],
+  gasoline: ['뉴욕항 휘발유 현물', '미국 뉴욕항에서 거래되는 일반 휘발유의 세전 도매가입니다(1갤런 = 3.785L). 국내 가격과 직접 비교보다는 흐름 참고용입니다.'],
+};
 function renderTiles() {
   const t = [];
   const op = D.opinet, fx = D.fx, it = D.intl || {};
@@ -292,18 +308,18 @@ function renderTiles() {
     const n = op?.national?.[f];
     if (n) {
       const d = n.diff ? `<span class="${n.diff > 0 ? 'up' : 'down'}">${n.diff > 0 ? '▲' : '▼'}${fmt(Math.abs(n.diff), 2)}</span> 전일 대비` : '전일과 동일';
-      t.push({ s: op.stale, h: `<small>주유소 ${FUEL[f]} 전국 평균<br>오피넷 · ${esc(op.date)}</small><strong>${fmt(n.price, 2)}<span style="font-size:12px"> 원/L</span></strong><div class="meta">${d}</div>${spark(op.recent?.[f])}` });
+      t.push({ s: op.stale, tip: TIP['st_' + f], h: `<small>주유소 ${FUEL[f]} 전국 평균<br>오피넷 · ${esc(op.date)}</small><strong>${fmt(n.price, 2)}<span style="font-size:12px"> 원/L</span></strong><div class="meta">${d}</div>${spark(op.recent?.[f])}` });
     }
   }
-  if (fx) t.push({ s: fx.stale, h: `<small>원/달러 환율<br>${esc(fx.source)} · ${esc(fx.date)}</small><strong>${fmt(fx.value, 2)}<span style="font-size:12px"> 원</span></strong><div class="meta">매매기준율</div>` });
+  if (fx) t.push({ s: fx.stale, tip: TIP.fx, h: `<small>원/달러 환율<br>${esc(fx.source)} · ${esc(fx.date)}</small><strong>${fmt(fx.value, 2)}<span style="font-size:12px"> 원</span></strong><div class="meta">매매기준율</div>` });
   const lab = { brent: '브렌트유', wti: 'WTI', dubai: '두바이유(월평균)', diesel: '뉴욕항 경유 현물', gasoline: '뉴욕항 휘발유 현물' };
   for (const k of ['dubai', 'brent', 'wti', 'diesel', 'gasoline']) {
     const x = it[k];
     if (!x) continue;
     const krw = fx ? `≈ ${fmt((x.value * fx.value) / (k === 'diesel' || k === 'gasoline' ? 3.785411784 : 158.987))}원/L` : '';
-    t.push({ s: x.stale, h: `<small>${lab[k]}<br>${esc(x.source)} · ${esc(x.date)}</small><strong>${fmt(x.value, k === 'diesel' || k === 'gasoline' ? 3 : 2)}<span style="font-size:12px"> ${esc(x.unit)}</span></strong><div class="meta">${krw}</div>${spark(x.history)}` });
+    t.push({ s: x.stale, tip: TIP[k], h: `<small>${lab[k]}<br>${esc(x.source)} · ${esc(x.date)}</small><strong>${fmt(x.value, k === 'diesel' || k === 'gasoline' ? 3 : 2)}<span style="font-size:12px"> ${esc(x.unit)}</span></strong><div class="meta">${krw}</div>${spark(x.history)}` });
   }
-  $('tiles').innerHTML = t.length ? t.map((x) => `<div class="card tile${x.s ? ' stale' : ''}">${x.h}${x.s ? '<div class="meta">⚠ 최근 수집 실패 · 이전값</div>' : ''}</div>`).join('') : '<div class="card msg">수집된 데이터가 없습니다. 아래 수집 상태를 확인하세요.</div>';
+  $('tiles').innerHTML = t.length ? t.map((x) => `<div class="card tile${x.s ? ' stale' : ''}" tabindex="0"><span class="q" aria-hidden="true">?</span>${x.h}${x.tip ? `<div class="tip" role="tooltip"><b>${x.tip[0]}</b>${x.tip[1]}</div>` : ''}${x.s ? '<div class="meta">⚠ 최근 수집 실패 · 이전값</div>' : ''}</div>`).join('') : '<div class="card msg">수집된 데이터가 없습니다. 아래 수집 상태를 확인하세요.</div>';
 }
 
 function renderStatus() {
@@ -360,6 +376,11 @@ $('sample').addEventListener('click', () => {
 $('clear').addEventListener('click', () => { for (const f of Object.keys(FUEL)) $('in_' + f).value = ''; saveInputs(); renderAll(); });
 syncUnit();
 renderAll();
+$('tiles').addEventListener('click', (e) => {
+  const tile = e.target.closest('.tile');
+  document.querySelectorAll('.tile.show').forEach((x) => x !== tile && x.classList.remove('show'));
+  if (tile) tile.classList.toggle('show');
+});
 const dlg = $('infoDlg');
 $('infoOpen').addEventListener('click', () => (dlg.showModal ? dlg.showModal() : dlg.setAttribute('open', '')));
 $('infoClose').addEventListener('click', () => dlg.close());
