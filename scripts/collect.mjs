@@ -59,7 +59,7 @@ async function opinet() {
   const q = `out=json&code=${KEY.opinet}`;
   const all = await getJson(`${OPINET}/avgAllPrice.do?${q}`);
   const rows = all?.RESULT?.OIL;
-  if (!Array.isArray(rows) || !rows.length) throw new Error(`응답 형식 오류: ${JSON.stringify(all).slice(0, 160)}`);
+  if (!Array.isArray(rows) || !rows.length) throw new Error(`빈 응답 ${JSON.stringify(all).slice(0, 80)} — 인증키가 맞지 않거나 접근이 제한된 경우 오피넷은 빈 목록을 돌려줌`);
   const out = { date: null, national: {}, sido: {}, recent: {} };
   for (const [k, cd] of Object.entries(PROD)) {
     const r = rows.find((x) => x.PRODCD === cd);
@@ -150,6 +150,7 @@ async function ecos() {
 
 async function exim() {
   if (!KEY.exim) throw new Error('EXIM_KEY 없음');
+  let lastBody = '';
   for (let i = 0; i < 8; i++) {
     const d = kstDate(i);
     let j;
@@ -160,8 +161,13 @@ async function exim() {
     }
     const usd = Array.isArray(j) ? j.find((x) => x.cur_unit === 'USD') : null;
     if (usd && num(usd.deal_bas_r)) return { value: num(usd.deal_bas_r), date: dash(d), source: '한국수출입은행', label: '원/달러 매매기준율' };
+    // result 코드: 1 성공, 2 DATA코드 오류, 3 인증코드 오류, 4 일일제한횟수 마감
+    const code = Array.isArray(j) && j[0]?.result;
+    if (code === 3) throw new Error('인증코드 오류(result=3) — 키 확인 필요');
+    if (code === 4) throw new Error('일일 호출 한도 초과(result=4)');
+    lastBody = JSON.stringify(j).slice(0, 120);
   }
-  throw new Error('최근 8일 USD 환율 없음');
+  throw new Error(`최근 8일 USD 환율 없음 (마지막 응답: ${lastBody})`);
 }
 
 // ── 실행 ──
