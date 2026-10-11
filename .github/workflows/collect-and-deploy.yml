@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, ccr-441335df-37x8z8]
   schedule:
-    - cron: '23 * * * *' # 매시 17분 (실행이 수 분~수십 분 지연될 수 있음)
+    - cron: '23 * * * *' # 매시 23분 목표 (GitHub 사정으로 지연·누락이 잦음 — 실측 약 4시간 간격)
   workflow_dispatch:
 
 permissions:
