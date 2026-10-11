@@ -1,0 +1,56 @@
+name: 유가 수집 및 Pages 배포
+
+on:
+  push:
+    branches: [main, ccr-441335df-37x8z8]
+  schedule:
+    - cron: '17 * * * *' # 매시 17분 (실행이 수 분~수십 분 지연될 수 있음)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: API 수집
+        env:
+          # 저장소 Settings > Secrets and variables > Actions 에 등록한 API 키
+          OPINET_KEY: ${{ secrets.OPINET_KEY }}
+          EIA_KEY: ${{ secrets.EIA_KEY }}
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          ECOS_KEY: ${{ secrets.ECOS_KEY }}
+          EXIM_KEY: ${{ secrets.EXIM_KEY }}
+          PREV_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data.json
+        run: |
+          mkdir -p site
+          node scripts/collect.mjs site/data.json
+          cp index.html site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+        continue-on-error: true
+        with:
+          enablement: true
+      - id: deployment
+        uses: actions/deploy-pages@v4

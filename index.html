@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>면세유 가격 비교</title>
+<style>
+:root{--ink:#132f45;--ink2:#3b5668;--muted:#6d7f89;--line:#dce2df;--paper:#f5f4f0;--card:#fff;--soft:#eef2f0;--accent:#c4541b;--accentSoft:#fbeee5;--good:#2f7d6f;--goodSoft:#e5f2ef;--bad:#b23a3a;--blue:#3e6f99;--board:#10222f;--boardInk:#ffd166;--shadow:0 6px 22px rgba(16,44,62,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#e6edf1;--ink2:#b8c7cf;--muted:#8b9ca5;--line:#2c3a42;--paper:#121a1f;--card:#1a242b;--soft:#202d35;--accent:#f0864f;--accentSoft:#3a2519;--good:#5cc0aa;--goodSoft:#173430;--bad:#ef7b7b;--blue:#7fb0db;--board:#0b151c;--shadow:none}}
+:root[data-theme="dark"]{--ink:#e6edf1;--ink2:#b8c7cf;--muted:#8b9ca5;--line:#2c3a42;--paper:#121a1f;--card:#1a242b;--soft:#202d35;--accent:#f0864f;--accentSoft:#3a2519;--good:#5cc0aa;--goodSoft:#173430;--bad:#ef7b7b;--blue:#7fb0db;--board:#0b151c;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;font-size:15px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header{padding:26px 0 14px;border-bottom:1px solid var(--line)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.eyebrow{font-size:11px;letter-spacing:2px;color:var(--muted);font-weight:700}
+h1{margin:2px 0 0;font-size:26px;letter-spacing:-.8px;line-height:1.25}
+.upd{font-size:12px;color:var(--ink2);text-align:right}
+.upd b{display:block;font-size:15px;color:var(--ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chip{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink2);white-space:nowrap}
+.chip.ok::before{content:'●';color:var(--good);margin-right:4px}
+.chip.fail::before{content:'●';color:var(--bad);margin-right:4px}
+.chip.stale::before{content:'●';color:#d09a1c;margin-right:4px}
+section{margin:22px 0}
+h2{font-size:18px;letter-spacing:-.5px;margin:0 0 4px}
+.sub{font-size:13px;color:var(--muted);margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:6px}
+
+/* 가격판 */
+.board{background:var(--board);border-radius:8px;padding:18px;color:#fff;box-shadow:var(--shadow)}
+.boardHead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.boardHead strong{font-size:14px;letter-spacing:1px;color:#cfdbe2}
+.seg{display:inline-flex;border:1px solid #3b5466;border-radius:4px;overflow:hidden}
+.seg button{background:transparent;border:0;color:#cfdbe2;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:#2b4659;color:#fff;font-weight:700}
+.rows{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:110px minmax(0,1fr) 70px;align-items:center;gap:12px;background:#17303f;border-radius:6px;padding:10px 14px}
+.row .fuel{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.row .fuel small{display:block;font-size:11px;font-weight:400;color:#9fb4c0;letter-spacing:0}
+.row input{width:100%;min-width:0;background:#0b1820;border:1px solid #33505f;border-radius:4px;color:var(--boardInk);font-size:34px;font-weight:800;text-align:right;padding:6px 12px;font-family:ui-monospace,'SFMono-Regular',Consolas,monospace;font-variant-numeric:tabular-nums}
+.row input::placeholder{color:#4b6574}
+.row input:focus{outline:2px solid var(--boardInk);outline-offset:1px}
+.row .unit{font-size:13px;color:#9fb4c0}
+.boardFoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:#9fb4c0}
+.boardFoot select{background:#0b1820;color:#fff;border:1px solid #33505f;border-radius:4px;padding:6px 8px;font:inherit}
+.linkbtn{background:none;border:0;color:#9fc6e0;text-decoration:underline;cursor:pointer;font:inherit;font-size:12px;padding:0}
+
+/* 비교 결과 */
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.res{padding:18px}
+.res h3{margin:0;font-size:16px;display:flex;justify-content:space-between;gap:8px}
+.res h3 span{font-size:12px;color:var(--muted);font-weight:400}
+.verdict{margin:8px 0 14px;font-size:20px;font-weight:800;letter-spacing:-.6px;line-height:1.35}
+.verdict .g{color:var(--good)}.verdict .b{color:var(--bad)}
+.verdict.empty{font-size:14px;font-weight:400;color:var(--muted)}
+.ladder{display:grid;gap:8px}
+.lrow{display:grid;grid-template-columns:96px minmax(0,1fr) 92px;gap:8px;align-items:center;font-size:12px}
+.lrow .lab{color:var(--ink2)}
+.lrow .track{height:16px;background:var(--soft);border-radius:3px;overflow:hidden}
+.lrow .bar{height:100%;border-radius:3px}
+.lrow .val{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.lrow.me .lab{color:var(--accent);font-weight:800}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+.metrics div{background:var(--soft);border-radius:4px;padding:8px 10px;min-width:0}
+.metrics small{display:block;font-size:11px;color:var(--muted)}
+.metrics b{font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* 시장 데이터 */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{padding:13px 14px;min-width:0}
+.tile small{display:block;font-size:11px;color:var(--muted);line-height:1.35}
+.tile strong{display:block;font-size:22px;letter-spacing:-.6px;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .meta{font-size:11px;color:var(--ink2);margin-top:2px}
+.tile .up{color:var(--bad)}.tile .down{color:var(--blue)}
+.tile svg{display:block;width:100%;height:30px;margin-top:6px}
+.tile.stale{opacity:.75}
+.note{font-size:12px;color:var(--ink2);background:var(--accentSoft);border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 4px 4px 0;line-height:1.7}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+td.okc{color:var(--good);font-weight:700}td.failc{color:var(--bad);font-weight:700}
+details{margin-top:10px}
+summary{cursor:pointer;font-size:13px;color:var(--ink2)}
+.msg{padding:14px 16px;font-size:13px;color:var(--bad)}
+footer{padding:20px 0 40px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:30px}
+@media(max-width:860px){.results{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wrap{padding:0 16px}h1{font-size:22px}.upd{text-align:left}.row{grid-template-columns:72px minmax(0,1fr);padding:10px}.row .unit{display:none}.row .fuel{font-size:17px}.row input{font-size:26px}.lrow{grid-template-columns:76px minmax(0,1fr) 78px}.verdict{font-size:18px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="top">
+    <div><div class="eyebrow">TAX-FREE FUEL · PRICE CHECK</div><h1>오늘 면세유 단가, 시장가격과 비교</h1></div>
+    <div class="upd">시장 데이터 수집 시각<b id="updated">불러오는 중…</b><span id="updatedAgo"></span></div>
+  </div>
+  <div class="chips" id="chips"></div>
+</div></header>
+
+<main class="wrap">
+<section>
+  <h2>① 오늘 면세유 단가 입력</h2>
+  <p class="sub">수협에서 공지한 오늘 단가를 주유소 가격판처럼 입력하면 아래에서 바로 비교됩니다.</p>
+  <div class="board">
+    <div class="boardHead"><strong>면세유 오늘의 가격</strong>
+      <div class="seg" role="group" aria-label="입력 단위"><button type="button" data-unit="drum" aria-pressed="true">원/드럼</button><button type="button" data-unit="liter" aria-pressed="false">원/L</button></div>
+    </div>
+    <div class="rows">
+      <label class="row"><span class="fuel">경유<small>선박용 면세</small></span><input id="in_diesel" inputmode="numeric" autocomplete="off" placeholder="0"><span class="unit" data-unitlabel>원/드럼</span></label>
+      <label class="row"><span class="fuel">휘발유<small>면세</small></span><input id="in_gasoline" inputmode="numeric" autocomplete="off" placeholder="0"><span class="unit" data-unitlabel>원/드럼</span></label>
+    </div>
+    <div class="boardFoot">
+      <label>비교 지역 <select id="region"><option value="">전국 평균</option></select></label>
+      <span>1드럼 = 200L · <button type="button" class="linkbtn" id="sample">예시값 넣기</button> · <button type="button" class="linkbtn" id="clear">지우기</button></span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>② 비교 결과</h2>
+  <p class="sub">같은 리터(L) 기준으로 맞춰 비교합니다. 막대는 국제 도매가 → 면세유 → 일반 주유소 순입니다.</p>
+  <div class="results">
+    <div class="card res" id="res_diesel"></div>
+    <div class="card res" id="res_gasoline"></div>
+  </div>
+</section>
+
+<section>
+  <h2>③ API로 가져온 시장 데이터</h2>
+  <p class="sub">GitHub Actions가 1시간마다 오피넷·EIA·FRED·한국은행·수출입은행 API에서 수집합니다.</p>
+  <div class="tiles" id="tiles"><div class="card msg">데이터를 불러오는 중입니다…</div></div>
+  <details><summary>수집 상태 · 출처 보기</summary>
+    <div class="card" style="margin-top:8px;overflow-x:auto"><table><thead><tr><th>API</th><th>결과</th><th>내용</th></tr></thead><tbody id="statusBody"></tbody></table></div>
+  </details>
+</section>
+
+<section>
+  <div class="note">
+    <b>읽는 법</b><br>
+    · <b>일반 주유소 평균</b>(오피넷)은 유류세·부가세가 모두 포함된 소비자 가격입니다. 면세유와의 차이는 대체로 <b>면제된 세금만큼</b>입니다.<br>
+    · <b>국제 도매가</b>는 뉴욕항 현물가격(EIA·FRED)을 오늘 환율로 원/L 환산한 값으로, 세금·운송·유통비용이 빠진 기준선입니다. 면세유가 이 값보다 얼마나 높은지는 수입·정제·유통 비용 몫입니다.<br>
+    · 국제가격은 발표가 며칠 늦습니다. 각 값의 기준일을 함께 확인하세요. 수집에 실패하면 마지막으로 성공한 값을 회색으로 표시합니다.
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">공개 API 기반 시연 화면입니다 · 수협 공식 서비스가 아니며, 면세유 단가는 담당자가 직접 입력합니다 · 출처: 한국석유공사 오피넷, U.S. EIA, FRED(St. Louis Fed), 한국은행 ECOS, 한국수출입은행</div></footer>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 0) => Number(v).toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const FUEL = { diesel: '경유', gasoline: '휘발유' };
+const SAMPLE = { diesel: 248920, gasoline: null }; // 2026년 9월 수협 선박용 면세 경유 공시가 (예시)
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+let D = null;
+let unit = store.get('unit') === 'liter' ? 'liter' : 'drum';
+
+function parseInput(id) {
+  const n = Number($(id).value.replace(/[^\d.]/g, ''));
+  return n > 0 ? n : null;
+}
+function perLiter(fuel) {
+  const v = parseInput('in_' + fuel);
+  if (v === null) return null;
+  return unit === 'drum' ? v / 200 : v;
+}
+function stationPrice(fuel) {
+  const op = D?.opinet;
+  if (!op) return null;
+  const reg = $('region').value;
+  if (reg) {
+    const r = (op.sido?.[fuel] || []).find((x) => x.code === reg);
+    if (r?.price) return { price: r.price, label: r.name + ' 평균' };
+  }
+  const n = op.national?.[fuel];
+  return n?.price ? { price: n.price, label: '전국 평균' } : null;
+}
+function intlPerLiter(fuel) {
+  const it = D?.intl?.[fuel], fx = D?.fx?.value;
+  if (!it || !fx) return null;
+  return { price: (it.value * fx) / (D.conv?.litersPerGallon || 3.785411784), date: it.date, stale: it.stale };
+}
+
+function renderResult(fuel) {
+  const el = $('res_' + fuel);
+  const me = perLiter(fuel), st = stationPrice(fuel), it = intlPerLiter(fuel);
+  const name = FUEL[fuel];
+  let head = `<h3>${name}<span>${st ? esc(st.label) : '주유소 가격 없음'}${D?.opinet?.date ? ' · ' + esc(D.opinet.date) : ''}</span></h3>`;
+  let verdict;
+  if (me === null) {
+    verdict = `<div class="verdict empty">위 가격판에 오늘 면세 ${name} 단가를 입력하세요.</div>`;
+  } else if (st) {
+    const diff = st.price - me, pct = (diff / st.price) * 100;
+    verdict = diff >= 0
+      ? `<div class="verdict">일반 주유소보다 L당 <span class="g">${fmt(diff)}원 (${pct.toFixed(1)}%)</span> 저렴</div>`
+      : `<div class="verdict">일반 주유소보다 L당 <span class="b">${fmt(-diff)}원</span> 비쌈 — 입력값을 확인하세요</div>`;
+  } else {
+    verdict = `<div class="verdict empty">주유소 가격을 불러오지 못해 비교할 수 없습니다.</div>`;
+  }
+  const items = [
+    it && { lab: '국제 도매가', v: it.price, color: 'var(--blue)', note: it.stale ? ' (이전값)' : '' },
+    me !== null && { lab: '면세유(입력)', v: me, color: 'var(--accent)', me: true },
+    st && { lab: '주유소 평균', v: st.price, color: 'var(--ink2)' },
+  ].filter(Boolean);
+  const max = Math.max(...items.map((x) => x.v), 1);
+  const ladder = items.length ? `<div class="ladder">${items.map((x) => `<div class="lrow${x.me ? ' me' : ''}"><span class="lab">${x.lab}</span><span class="track"><span class="bar" style="display:block;width:${(x.v / max) * 100}%;background:${x.color}"></span></span><span class="val">${fmt(x.v)}원/L</span></div>`).join('')}</div>` : '';
+  let metrics = '';
+  if (me !== null) {
+    const m = [
+      ['면세유 단가', `${fmt(me)}원/L · ${fmt(me * 200)}원/드럼`],
+      st ? ['드럼당 절감액(주유소 대비)', `${fmt((st.price - me) * 200)}원`] : null,
+      it ? ['국제 도매가 대비', `L당 ${me - it.price >= 0 ? '+' : '−'}${fmt(Math.abs(me - it.price))}원 (${fmt((me / it.price) * 100)}%)`] : null,
+      it ? ['국제가 기준일', `${esc(it.date)}${it.stale ? ' · 이전값' : ''}`] : null,
+    ].filter(Boolean);
+    metrics = `<div class="metrics">${m.map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('')}</div>`;
+  }
+  el.innerHTML = head + verdict + ladder + metrics;
+}
+
+function spark(hist) {
+  const v = (hist || []).map((x) => x.price ?? x.value).filter((x) => Number.isFinite(x));
+  if (v.length < 2) return '';
+  const mi = Math.min(...v), ma = Math.max(...v), W = 100, H = 30;
+  const pts = v.map((x, i) => `${((i / (v.length - 1)) * W).toFixed(1)},${(H - 3 - ((x - mi) / (ma - mi || 1)) * (H - 6)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderTiles() {
+  const t = [];
+  const op = D.opinet, fx = D.fx, it = D.intl || {};
+  for (const f of ['diesel', 'gasoline']) {
+    const n = op?.national?.[f];
+    if (n) {
+      const d = n.diff ? `<span class="${n.diff > 0 ? 'up' : 'down'}">${n.diff > 0 ? '▲' : '▼'}${fmt(Math.abs(n.diff), 2)}</span> 전일 대비` : '전일과 동일';
+      t.push({ s: op.stale, h: `<small>주유소 ${FUEL[f]} 전국 평균<br>오피넷 · ${esc(op.date)}</small><strong>${fmt(n.price, 2)}<span style="font-size:12px"> 원/L</span></strong><div class="meta">${d}</div>${spark(op.recent?.[f])}` });
+    }
+  }
+  if (fx) t.push({ s: fx.stale, h: `<small>원/달러 환율<br>${esc(fx.source)} · ${esc(fx.date)}</small><strong>${fmt(fx.value, 2)}<span style="font-size:12px"> 원</span></strong><div class="meta">매매기준율</div>` });
+  const lab = { brent: '브렌트유', wti: 'WTI', dubai: '두바이유(월평균)', diesel: '뉴욕항 경유 현물', gasoline: '뉴욕항 휘발유 현물' };
+  for (const k of ['dubai', 'brent', 'wti', 'diesel', 'gasoline']) {
+    const x = it[k];
+    if (!x) continue;
+    const krw = fx ? `≈ ${fmt((x.value * fx.value) / (k === 'diesel' || k === 'gasoline' ? 3.785411784 : 158.987))}원/L` : '';
+    t.push({ s: x.stale, h: `<small>${lab[k]}<br>${esc(x.source)} · ${esc(x.date)}</small><strong>${fmt(x.value, k === 'diesel' || k === 'gasoline' ? 3 : 2)}<span style="font-size:12px"> ${esc(x.unit)}</span></strong><div class="meta">${krw}</div>${spark(x.history)}` });
+  }
+  $('tiles').innerHTML = t.length ? t.map((x) => `<div class="card tile${x.s ? ' stale' : ''}">${x.h}${x.s ? '<div class="meta">⚠ 최근 수집 실패 · 이전값</div>' : ''}</div>`).join('') : '<div class="card msg">수집된 데이터가 없습니다. 아래 수집 상태를 확인하세요.</div>';
+}
+
+function renderStatus() {
+  const s = D.status || [];
+  $('chips').innerHTML = s.map((x) => `<span class="chip ${x.ok ? 'ok' : 'fail'}" title="${esc(x.message)}">${esc(x.name)}</span>`).join('');
+  $('statusBody').innerHTML = s.map((x) => `<tr><td>${esc(x.name)}</td><td class="${x.ok ? 'okc' : 'failc'}">${x.ok ? '성공' : '실패'}</td><td>${esc(x.message)}</td></tr>`).join('');
+  $('updated').textContent = D.updatedAtKst ? D.updatedAtKst + ' (한국시간)' : '-';
+  const mins = Math.round((Date.now() - new Date(D.updatedAt)) / 60000);
+  $('updatedAgo').textContent = Number.isFinite(mins) ? (mins < 60 ? `${mins}분 전` : `${Math.floor(mins / 60)}시간 ${mins % 60}분 전`) : '';
+}
+
+function fillRegions() {
+  const list = D?.opinet?.sido?.diesel || D?.opinet?.sido?.gasoline || [];
+  const sel = $('region');
+  list.filter((x) => x.code && x.code !== '00').forEach((x) => sel.insertAdjacentHTML('beforeend', `<option value="${esc(x.code)}">${esc(x.name)}</option>`));
+  const saved = store.get('region');
+  if (saved && [...sel.options].some((o) => o.value === saved)) sel.value = saved;
+}
+
+function renderAll() { renderResult('diesel'); renderResult('gasoline'); }
+
+function setUnit(u) {
+  if (u === unit) return;
+  for (const f of Object.keys(FUEL)) {
+    const v = parseInput('in_' + f);
+    if (v !== null) $('in_' + f).value = fmt(u === 'drum' ? v * 200 : v / 200, u === 'drum' ? 0 : 1);
+  }
+  unit = u;
+  store.set('unit', u);
+  syncUnit();
+  saveInputs();
+  renderAll();
+}
+function syncUnit() {
+  document.querySelectorAll('[data-unit]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.unit === unit ? 'true' : 'false'));
+  document.querySelectorAll('[data-unitlabel]').forEach((s) => (s.textContent = unit === 'drum' ? '원/드럼' : '원/L'));
+  document.querySelectorAll('.row input').forEach((i) => (i.placeholder = unit === 'drum' ? '예: 248,920' : '예: 1,244.6'));
+}
+function saveInputs() { for (const f of Object.keys(FUEL)) store.set('in_' + f, $('in_' + f).value); }
+
+document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => setUnit(b.dataset.unit)));
+for (const f of Object.keys(FUEL)) {
+  const el = $('in_' + f);
+  el.value = store.get('in_' + f) || '';
+  el.addEventListener('input', () => { saveInputs(); renderAll(); });
+  el.addEventListener('blur', () => { const v = parseInput('in_' + f); if (v !== null) el.value = fmt(v, unit === 'drum' ? 0 : 1); saveInputs(); });
+}
+$('region').addEventListener('change', () => { store.set('region', $('region').value); renderAll(); });
+$('sample').addEventListener('click', () => {
+  if (unit !== 'drum') setUnit('drum');
+  for (const f of Object.keys(FUEL)) $('in_' + f).value = SAMPLE[f] ? fmt(SAMPLE[f]) : '';
+  saveInputs(); renderAll();
+});
+$('clear').addEventListener('click', () => { for (const f of Object.keys(FUEL)) $('in_' + f).value = ''; saveInputs(); renderAll(); });
+syncUnit();
+renderAll();
+
+fetch('data.json?t=' + Date.now(), { cache: 'no-store' })
+  .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then((d) => { D = d; fillRegions(); renderStatus(); renderTiles(); renderAll(); })
+  .catch((e) => {
+    $('updated').textContent = '불러오기 실패';
+    $('tiles').innerHTML = `<div class="card msg" style="grid-column:1/-1">시장 데이터(data.json)를 불러오지 못했습니다: ${esc(e.message)}<br>GitHub Pages 주소로 접속했는지, Actions 수집이 한 번 이상 성공했는지 확인하세요.</div>`;
+  });
+</script>
+</body>
+</html>
