@@ -48,7 +48,14 @@ h2{font-size:18px;letter-spacing:-.5px;margin:0 0 4px}
 
 /* 비교 결과 */
 .results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.res{padding:18px}
+.res{padding:18px;position:relative}
+.res h3 .name{display:inline-flex;align-items:center;gap:8px}
+.resQ{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;font:inherit;font-size:11px;font-weight:700;padding:1px 9px;cursor:help;line-height:1.6}
+.resQ:hover,.resQ:focus-visible,.res.show .resQ{border-color:var(--accent);color:var(--accent)}
+.res .rtip{position:absolute;top:46px;left:12px;right:12px;background:var(--board);color:#e8f0f4;border-radius:6px;padding:13px 15px;font-size:12px;line-height:1.65;box-shadow:0 10px 24px rgba(0,0,0,.25);opacity:0;visibility:hidden;transition:opacity .15s;z-index:5}
+.res .rtip b{color:var(--boardInk)}
+.res .rtip ul{margin:6px 0 0;padding-left:16px}
+.res:has(.resQ:hover) .rtip,.res:has(.resQ:focus-visible) .rtip,.res.show .rtip{opacity:1;visibility:visible}
 .res h3{margin:0;font-size:16px;display:flex;justify-content:space-between;gap:8px}
 .res h3 span{font-size:12px;color:var(--muted);font-weight:400}
 .verdict{margin:8px 0 14px;font-size:20px;font-weight:800;letter-spacing:-.6px;line-height:1.35}
@@ -253,7 +260,7 @@ function renderResult(fuel) {
   const el = $('res_' + fuel);
   const me = perLiter(fuel), st = stationPrice(fuel), it = intlPerLiter(fuel);
   const name = FUEL[fuel];
-  let head = `<h3>${name}<span>${st ? esc(st.label) : '주유소 가격 없음'}${D?.opinet?.date ? ' · ' + esc(D.opinet.date) : ''}</span></h3>`;
+  let head = `<h3><span class="name">${name}<button type="button" class="resQ" aria-label="${name} 비교 결과 설명">? 설명</button></span><span>${st ? esc(st.label) : '주유소 가격 없음'}${D?.opinet?.date ? ' · ' + esc(D.opinet.date) : ''}</span></h3>`;
   let verdict;
   if (me === null) {
     verdict = `<div class="verdict empty">위 가격판에 오늘 면세 ${name} 단가를 입력하세요.</div>`;
@@ -280,7 +287,15 @@ function renderResult(fuel) {
     metrics = `<div class="metrics">${m.map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('')}</div>`;
   }
   const ref = it ? `<p class="ref">참고 · 국제 도매가(뉴욕항 현물, 환율 환산) 약 ${fmt(it.price)}원/L · ${esc(it.date)} 기준${it.stale ? ' · 이전값' : ''} — 국내 가격 기준인 싱가포르 시장과 다를 수 있음</p>` : '';
-  el.innerHTML = head + verdict + ladder + metrics + ref;
+  const tax = '교통·에너지·환경세, 교육세, 주행세, 부가세';
+  const rtip = `<div class="rtip" role="tooltip"><b>${name} 비교 결과 읽는 법</b><ul>
+    <li><b>면세유(입력)</b> — 담당자가 입력한 오늘 수협 면세 ${name} 단가입니다. 드럼 단가는 ÷200 해서 L당으로 맞춥니다.</li>
+    <li><b>주유소 평균</b> — 오피넷이 집계한 ${st ? esc(st.label) : '전국 평균'} ${fuel === 'diesel' ? '자동차용 경유' : '휘발유'} 판매가입니다(세금 포함). 위에서 지역을 바꿀 수 있습니다.</li>
+    <li><b>차이(저렴한 금액)</b> — 대부분 면제된 세금(${tax}) 몫입니다.</li>
+    <li><b>드럼당 절감액</b> — L당 차이 × 200L. 같은 양을 주유소에서 샀을 때보다 아끼는 금액입니다.</li>
+    <li><b>참고 국제 도매가</b> — 미국 뉴욕항 세전 도매가 환산값으로, 흐름 참고용입니다.</li>
+  </ul></div>`;
+  el.innerHTML = head + verdict + ladder + metrics + ref + rtip;
 }
 
 function spark(hist) {
@@ -376,6 +391,11 @@ $('sample').addEventListener('click', () => {
 $('clear').addEventListener('click', () => { for (const f of Object.keys(FUEL)) $('in_' + f).value = ''; saveInputs(); renderAll(); });
 syncUnit();
 renderAll();
+document.querySelector('.results').addEventListener('click', (e) => {
+  const q = e.target.closest('.resQ');
+  document.querySelectorAll('.res.show').forEach((x) => (!q || x !== q.closest('.res')) && x.classList.remove('show'));
+  if (q) q.closest('.res').classList.toggle('show');
+});
 $('tiles').addEventListener('click', (e) => {
   const tile = e.target.closest('.tile');
   document.querySelectorAll('.tile.show').forEach((x) => x !== tile && x.classList.remove('show'));
