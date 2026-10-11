@@ -1,0 +1,29 @@
+name: 예약 수집 유지 (60일 비활성 자동중지 방지)
+
+# GitHub은 공개 저장소에 60일간 활동이 없으면 예약 실행을 자동으로 끈다.
+# 매달 수집 워크플로와 이 워크플로를 다시 '사용'으로 설정해 중지되지 않게 한다. (커밋 없음)
+on:
+  schedule:
+    - cron: '41 0 1 * *' # 매월 1일 09:41 (한국시간)
+  workflow_dispatch:
+  push:
+    branches: [main, ccr-441335df-37x8z8]
+    paths: [.github/workflows/keepalive.yml]
+
+permissions:
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 워크플로 다시 활성화
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for wf in collect-and-deploy.yml keepalive.yml; do
+            gh api -X PUT "repos/$REPO/actions/workflows/$wf/enable"
+            echo "✔ $wf 활성화"
+          done
+          gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.name): \(.state)"'
