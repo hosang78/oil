@@ -1,9 +1,12 @@
 // 무료 공공 API에서 유가·환율을 수집해 data.json으로 저장한다.
 // GitHub Actions(서버)에서 실행되므로 브라우저 CORS 제한을 받지 않는다.
-// 사용: node scripts/collect.mjs <출력경로>
-import { writeFile } from 'node:fs/promises';
+// 사용: node scripts/collect.mjs <data.json 경로> <history.json 경로>
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { emptyHistory, mergeHistory, serializeHistory } from './history.mjs';
 
 const OUT = process.argv[2] || 'site/data.json';
+const HIST_PATH = process.argv[3] || 'data/history.json'; // 최근 30일 날짜별 이력 (저장소에 커밋됨)
 const KEY = {
   opinet: process.env.OPINET_KEY,
   eia: process.env.EIA_KEY,
@@ -125,16 +128,16 @@ async function eia() {
   const out = {};
   for (const [k, id] of Object.entries(EIA_SERIES)) {
     const r = rows.filter((x) => x.series === id && num(x.value) !== null);
-    if (r.length) out[k] = { value: num(r[0].value), date: r[0].period, unit: UNIT[k], source: 'EIA', history: r.slice(0, 10).map((x) => ({ date: x.period, value: num(x.value) })).reverse() };
+    if (r.length) out[k] = { value: num(r[0].value), date: r[0].period, unit: UNIT[k], source: 'EIA', history: r.slice(0, 10).map((x) => ({ date: x.period, value: num(x.value) })).reverse(), hist: r.slice(0, 45).map((x) => [x.period, num(x.value)]) };
   }
   return out;
 }
 
 async function fredOne(id) {
-  const j = await getJson(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${KEY.fred}&file_type=json&sort_order=desc&limit=15`);
+  const j = await getJson(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${KEY.fred}&file_type=json&sort_order=desc&limit=45`);
   const obs = (j?.observations || []).filter((o) => num(o.value) !== null);
   if (!obs.length) throw new Error(`${id} 값 없음`);
-  return { value: num(obs[0].value), date: obs[0].date, history: obs.slice(0, 10).map((o) => ({ date: o.date, value: num(o.value) })).reverse() };
+  return { value: num(obs[0].value), date: obs[0].date, history: obs.slice(0, 10).map((o) => ({ date: o.date, value: num(o.value) })).reverse(), hist: obs.map((o) => [o.date, num(o.value)]) };
 }
 
 async function fred() {
@@ -155,11 +158,11 @@ async function fred() {
 // ── 환율: 한국은행 ECOS(주), 수출입은행(보조) ──
 async function ecos() {
   if (!KEY.ecos) throw new Error('ECOS_KEY 없음');
-  const j = await getJson(`https://ecos.bok.or.kr/api/StatisticSearch/${KEY.ecos}/json/kr/1/30/731Y001/D/${kstDate(20)}/${kstDate(0)}/0000001`);
+  const j = await getJson(`https://ecos.bok.or.kr/api/StatisticSearch/${KEY.ecos}/json/kr/1/60/731Y001/D/${kstDate(45)}/${kstDate(0)}/0000001`);
   const rows = j?.StatisticSearch?.row;
   if (!Array.isArray(rows) || !rows.length) throw new Error(`응답 형식 오류: ${JSON.stringify(j).slice(0, 160)}`);
   const last = rows[rows.length - 1];
-  return { value: num(last.DATA_VALUE), date: dash(last.TIME), source: '한국은행 ECOS', label: '원/달러 매매기준율' };
+  return { value: num(last.DATA_VALUE), date: dash(last.TIME), source: '한국은행 ECOS', label: '원/달러 매매기준율', hist: rows.map((r) => [dash(r.TIME), num(r.DATA_VALUE)]) };
 }
 
 async function exim() {
@@ -241,6 +244,38 @@ let op = rOp.ok ? rOp.data : prev?.opinet ? { ...prev.opinet, stale: true } : nu
 const covered = { '오피넷': !!op, EIA: Object.keys(intl).length > 0, FRED: Object.keys(intl).length > 0, '한국은행 ECOS': !!fx, '한국수출입은행': !!fx };
 for (const st of status) if (!st.ok && covered[st.name]) st.fallback = true;
 
+// ── 날짜별 이력(최근 30일) 누적 ──
+// 이번 수집에서 실제로 받은 값만 추가한다(이전값·실패 시 보완값은 제외).
+const todayKst = dash(kstDate(0));
+const adds = {};
+const put = (key, pts) => { if (pts?.length) adds[key] = [...(adds[key] || []), ...pts.filter(([, v]) => v != null)]; };
+if (rOp.ok) {
+  for (const [f, key] of [['diesel', 'oil_diesel'], ['gasoline', 'oil_gasoline']]) {
+    put(key, (rOp.data.recent?.[f] || []).map((x) => [x.date, x.price]));
+    const n = rOp.data.national?.[f];
+    if (n?.price && rOp.data.date) put(key, [[rOp.data.date, n.price]]);
+  }
+}
+if (rEcos.ok) put('fx', rEcos.data.hist);
+for (const [k, key] of [['brent', 'brent'], ['wti', 'wti'], ['diesel', 'ny_diesel'], ['gasoline', 'ny_gasoline']]) {
+  // FRED를 먼저, EIA를 나중에 넣어 같은 날짜는 EIA 값이 우선
+  if (rFred.ok) put(key, rFred.data[k]?.hist);
+  if (rEia.ok) put(key, rEia.data[k]?.hist);
+}
+let history = emptyHistory(), histExists = true;
+try {
+  history = JSON.parse(await readFile(HIST_PATH, 'utf8'));
+} catch {
+  histExists = false;
+}
+const merged = mergeHistory(history, adds, todayKst, now.toISOString());
+if (merged.changed || !histExists) {
+  await mkdir(dirname(HIST_PATH), { recursive: true });
+  await writeFile(HIST_PATH, serializeHistory(merged.hist));
+}
+const counts = Object.entries(merged.hist.series).map(([k, v]) => `${k}:${v.points.length}`).join(' ');
+console.log(`이력 ${merged.changed ? '갱신' : '변경 없음'} (${HIST_PATH}) ${counts}`);
+
 const kst = new Date(now.getTime() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 16);
 const data = {
   updatedAt: now.toISOString(),
@@ -252,6 +287,7 @@ const data = {
   status,
 };
 
-await writeFile(OUT, JSON.stringify(data, null, 1));
+// 긴 이력(hist)은 history.json에만 저장하고 data.json에서는 뺀다
+await writeFile(OUT, JSON.stringify(data, (k, v) => (k === 'hist' ? undefined : v), 1));
 console.log(`\n저장: ${OUT} (${kst} KST)`);
 console.log(JSON.stringify({ opinet: op && { date: op.date, national: op.national, stale: op.stale }, fx, intl: Object.fromEntries(Object.entries(intl).map(([k, v]) => [k, `${v.value} ${v.unit} ${v.date} ${v.source}${v.stale ? ' (이전값)' : ''}`])) }, null, 1));

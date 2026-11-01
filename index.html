@@ -122,6 +122,29 @@ dialog.info::backdrop{background:rgba(10,20,28,.55)}
 .infoBody table td:last-child,.infoBody table th:last-child{white-space:nowrap}
 .infoBody ul{margin:0;padding-left:1.125rem;font-size:0.75rem;color:var(--ink2);line-height:1.7}
 @media(max-width:560px){.topRight{align-items:flex-start}.flow{grid-template-columns:1fr;gap:0.25rem}.flow span{transform:rotate(90deg)}}
+/* 가격 추이 */
+.trend{padding:1.125rem}
+.trendBar{display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap}
+.seg2{display:inline-flex;flex-wrap:wrap;gap:0.375rem}
+.seg2 button{border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:62.4375rem;padding:0.3125rem 0.875rem;font:inherit;font-size:0.8125rem;cursor:pointer}
+.seg2 button:hover{border-color:var(--accent)}
+.seg2 button[aria-pressed="true"]{background:var(--accentSoft);border-color:var(--accent);color:var(--accent);font-weight:700}
+.legendRow{display:flex;gap:1rem;flex-wrap:wrap;margin:0.875rem 0 0.25rem;font-size:0.8125rem;color:var(--ink2)}
+.legendRow i{display:inline-block;width:1.25rem;height:0.1875rem;border-radius:0.125rem;vertical-align:middle;margin-right:0.375rem}
+.chartWrap{position:relative;width:100%;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.chartWrap svg{display:block}
+.chartWrap .ax{font-size:0.75rem;fill:var(--muted)}
+.chartWrap .grid{stroke:var(--line);stroke-dasharray:3 4}
+.trendEmpty{padding:3rem 1rem;text-align:center;font-size:0.875rem;color:var(--muted)}
+.trendTip{position:absolute;top:0;pointer-events:none;background:var(--board);color:#e8f0f4;border-radius:0.375rem;padding:0.5rem 0.75rem;font-size:0.75rem;line-height:1.6;box-shadow:0 8px 20px rgba(0,0,0,.25);white-space:nowrap;display:none;z-index:3}
+.trendTip b{display:block;color:var(--boardInk);margin-bottom:0.125rem}
+.trendTip i{display:inline-block;width:0.5rem;height:0.5rem;border-radius:50%;margin-right:0.375rem}
+.trendStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0.5rem;margin-top:0.75rem}
+.trendStats div{background:var(--soft);border-radius:0.25rem;padding:0.5rem 0.625rem;min-width:0}
+.trendStats small{display:block;font-size:0.6875rem;color:var(--muted)}
+.trendStats b{font-size:0.9375rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.trendStats .up{color:var(--bad)}.trendStats .down{color:var(--blue)}
+@media(max-width:700px){.trendStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* 변동 시나리오 */
 .scen{padding:1.125rem}
 .scenCtl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem;align-items:start}
@@ -222,8 +245,32 @@ footer{padding:1.25rem 0 2.5rem;font-size:0.6875rem;color:var(--muted);border-to
   </div>
 </section>
 
+<section id="trend">
+  <h2>④ 가격 추이 (최근 30일)</h2>
+  <p class="sub">수집한 값을 날짜별로 저장해 둡니다. 항목을 고르고 그래프 위에 마우스를 올리면(모바일은 손가락으로 누르면) 날짜별 값이 보입니다.</p>
+  <div class="card trend">
+    <div class="trendBar">
+      <div class="seg2" id="trendTabs">
+        <button type="button" data-k="st_diesel" aria-pressed="true">주유소 경유</button>
+        <button type="button" data-k="st_gasoline" aria-pressed="false">주유소 휘발유</button>
+        <button type="button" data-k="fx" aria-pressed="false">환율</button>
+        <button type="button" data-k="crude" aria-pressed="false">국제 원유</button>
+        <button type="button" data-k="ny" aria-pressed="false">뉴욕항 경유·휘발유</button>
+      </div>
+      <div class="seg2" id="trendDays">
+        <button type="button" data-d="7" aria-pressed="false">7일</button>
+        <button type="button" data-d="30" aria-pressed="true">30일</button>
+      </div>
+    </div>
+    <div class="legendRow" id="trendLegend"></div>
+    <div class="chartWrap" id="trendChart"><div class="trendEmpty">불러오는 중…</div></div>
+    <div class="trendStats" id="trendStats"></div>
+    <p class="ref" id="trendNote"></p>
+  </div>
+</section>
+
 <section>
-  <h2>④ API로 가져온 시장 데이터</h2>
+  <h2>⑤ API로 가져온 시장 데이터</h2>
   <p class="sub">GitHub Actions가 1시간마다 오피넷·EIA·FRED·한국은행·수출입은행 API에서 수집합니다. 카드에 마우스를 올리거나 누르면 설명이 보입니다.</p>
   <div class="tiles" id="tiles"><div class="card msg">데이터를 불러오는 중입니다…</div></div>
   <details><summary>수집 상태 · 출처 보기</summary>
@@ -265,6 +312,7 @@ footer{padding:1.25rem 0 2.5rem;font-size:0.6875rem;color:var(--muted);border-to
     <h3>수집 주기</h3>
     <ul>
       <li><b>매시간 1회 자동 수집</b> (GitHub 사정에 따라 수 분~수십 분 지연 가능). 필요하면 즉시 수동 수집도 가능합니다.</li>
+      <li>수집한 값은 <b>최근 30일치를 날짜별로 저장</b>해 추이 그래프로 보여줍니다. (저장 파일은 GitHub 저장소에 자동 기록)</li>
       <li>화면은 접속할 때마다 API를 부르지 않고 <b>마지막 수집값</b>을 보여줍니다. 수집 시각은 우측 상단에 표시됩니다.</li>
       <li>API 하나가 실패해도 그 항목만 직전 값으로 유지되고 나머지는 정상 갱신됩니다.</li>
     </ul>
@@ -455,6 +503,129 @@ function renderScenario() {
   $('passV').textContent = scen.pass + '%';
   $('scenRes').innerHTML = D ? ['diesel', 'gasoline'].map(scenCard).join('') : '<p class="sub">시장 데이터를 불러오는 중입니다…</p>';
 }
+// ── 가격 추이 (최근 30일) ──
+let H = null, histErr = false, trendCtx = null;
+const TREND = {
+  st_diesel: { unit: '원/L', dec: 0, lines: [{ key: 'oil_diesel', name: '주유소 경유 전국 평균', color: 'var(--ink2)' }], mine: 'diesel', note: 'st' },
+  st_gasoline: { unit: '원/L', dec: 0, lines: [{ key: 'oil_gasoline', name: '주유소 휘발유 전국 평균', color: 'var(--ink2)' }], mine: 'gasoline', note: 'st' },
+  fx: { unit: '원', dec: 1, lines: [{ key: 'fx', name: '원/달러 환율(매매기준율)', color: 'var(--blue)' }] },
+  crude: { unit: 'USD/배럴', dec: 2, lines: [{ key: 'brent', name: '브렌트유', color: 'var(--blue)' }, { key: 'wti', name: 'WTI', color: 'var(--good)' }] },
+  ny: { unit: 'USD/갤런', dec: 3, lines: [{ key: 'ny_diesel', name: '뉴욕항 경유 현물', color: 'var(--accent)' }, { key: 'ny_gasoline', name: '뉴욕항 휘발유 현물', color: 'var(--blue)' }] },
+};
+let trendKey = TREND[store.get('trendKey')] ? store.get('trendKey') : 'st_diesel';
+let trendDays = store.get('trendDays') === '7' ? 7 : 30;
+const DAY = 86400e3, tms = (d) => Date.parse(d + 'T00:00:00Z'), dstr = (ms) => new Date(ms).toISOString().slice(0, 10);
+const todayLocal = () => new Date().toLocaleDateString('sv-SE');
+
+// 면세유 입력값: 그날 입력한 단가(원/L)를 이 브라우저에 30일간 저장
+function loadMine() { try { return JSON.parse(store.get('inhist') || '{}') || {}; } catch { return {}; } }
+function saveMine() {
+  const h = loadMine(), t = todayLocal(), cur = {};
+  for (const f of Object.keys(FUEL)) { const v = perLiter(f); if (v !== null) cur[f] = Math.round(v * 10) / 10; }
+  if (Object.keys(cur).length) h[t] = cur; else delete h[t];
+  const cutoff = dstr(tms(t) - 30 * DAY);
+  for (const k of Object.keys(h)) if (k < cutoff) delete h[k];
+  store.set('inhist', JSON.stringify(h));
+}
+
+function trendLines() {
+  const cfg = TREND[trendKey];
+  const lines = cfg.lines.map((l) => ({ ...l, pts: (H?.series?.[l.key]?.points || []).map(([d, v]) => [tms(d), v]) }));
+  if (cfg.mine) {
+    const mine = loadMine();
+    const pts = Object.keys(mine).sort().filter((d) => mine[d][cfg.mine] != null).map((d) => [tms(d), mine[d][cfg.mine]]);
+    lines.push({ key: 'mine', name: '면세유(입력)', color: 'var(--accent)', pts, mine: true });
+  }
+  const all = lines.flatMap((l) => l.pts.map((p) => p[0]));
+  if (!all.length) return { cfg, lines, empty: true };
+  // 선택한 기간(7/30일)과 실제 저장된 구간 중 짧은 쪽에 맞춰 그린다 (저장 초기에도 화면이 비지 않도록)
+  const xmax = Math.max(...all), xmin = Math.max(xmax - (trendDays - 1) * DAY, Math.min(...all));
+  for (const l of lines) l.pts = l.pts.filter((p) => p[0] >= xmin);
+  return { cfg, lines, xmin, xmax, empty: false };
+}
+
+function renderTrend() {
+  document.querySelectorAll('#trendTabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === trendKey ? 'true' : 'false'));
+  document.querySelectorAll('#trendDays button').forEach((b) => b.setAttribute('aria-pressed', Number(b.dataset.d) === trendDays ? 'true' : 'false'));
+  const t = trendLines(), wrap = $('trendChart');
+  trendCtx = null;
+  $('trendLegend').innerHTML = t.lines.map((l) => `<span><i style="background:${l.color}"></i>${esc(l.name)}</span>`).join('');
+  if (t.empty) {
+    wrap.innerHTML = `<div class="trendEmpty">${histErr ? '이력 파일(history.json)을 불러오지 못했습니다. 수집이 한 번 이상 성공한 뒤에 생성됩니다.' : H ? '아직 저장된 이력이 없습니다.' : '불러오는 중…'}</div>`;
+    $('trendStats').innerHTML = ''; $('trendNote').textContent = '';
+    return;
+  }
+  const cfg = t.cfg, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const W = Math.max(260, wrap.clientWidth), Ht = Math.round(rem * 16);
+  const ml = rem * 3.9, mr = rem * 0.9, mt = rem * 0.9, mb = rem * 2.1, iw = W - ml - mr, ih = Ht - mt - mb;
+  const ys = t.lines.flatMap((l) => l.pts.map((p) => p[1]));
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  const pad = (hi - lo) * 0.15 || Math.abs(hi) * 0.02 || 1; lo -= pad; hi += pad;
+  const X = (ms) => ml + (t.xmax === t.xmin ? iw / 2 : ((ms - t.xmin) / (t.xmax - t.xmin)) * iw);
+  const Y = (v) => mt + ((hi - v) / (hi - lo)) * ih;
+  let svg = `<svg width="${W}" height="${Ht}" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${esc(cfg.unit)} 가격 추이">`;
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + ((hi - lo) * i) / 4, y = Y(v);
+    svg += `<line class="grid" x1="${ml}" x2="${W - mr}" y1="${y}" y2="${y}"/><text class="ax" x="${ml - 8}" y="${y + 4}" text-anchor="end">${fmt(v, cfg.dec)}</text>`;
+  }
+  const nx = W < 520 ? 4 : 6;
+  for (let i = 0; i <= nx; i++) {
+    const ms = t.xmin + ((t.xmax - t.xmin) * i) / nx, d = dstr(ms);
+    svg += `<text class="ax" x="${X(ms)}" y="${Ht - 6}" text-anchor="${i === 0 ? 'start' : i === nx ? 'end' : 'middle'}">${Number(d.slice(5, 7))}/${Number(d.slice(8))}</text>`;
+  }
+  for (const l of t.lines) {
+    if (!l.pts.length) continue;
+    if (l.pts.length > 1) svg += `<path d="${l.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" style="stroke:${l.color}" stroke-width="${l.mine ? 2.5 : 2.5}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const pts = l.mine || l.pts.length === 1 ? l.pts : [l.pts[l.pts.length - 1]];
+    for (const p of pts) svg += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${l.mine ? 4.5 : 4}" style="fill:${l.color}"/>`;
+  }
+  svg += `<line id="tcLine" y1="${mt}" y2="${mt + ih}" style="stroke:var(--muted)" stroke-width="1" visibility="hidden"/><g id="tcDots"></g></svg><div class="trendTip" id="trendTip"></div>`;
+  wrap.innerHTML = svg;
+  const dates = [...new Set(t.lines.flatMap((l) => l.pts.map((p) => p[0])))].sort((a, b) => a - b);
+  trendCtx = { t, X, Y, dates, W, mt, ih };
+
+  // 요약 통계 (첫 번째 수집 시리즈 기준)
+  const main = t.lines.find((l) => !l.mine && l.pts.length), stats = [];
+  if (main) {
+    const first = main.pts[0], last = main.pts[main.pts.length - 1];
+    const mn = main.pts.reduce((a, b) => (b[1] < a[1] ? b : a)), mx = main.pts.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const dv = last[1] - first[1], pc = first[1] ? (dv / first[1]) * 100 : 0, cls = dv > 0 ? 'up' : dv < 0 ? 'down' : '';
+    const md = (ms) => dstr(ms).slice(5).replace('-', '/');
+    stats.push(['최근값 (' + md(last[0]) + ')', `${fmt(last[1], cfg.dec)} ${cfg.unit}`],
+      ['기간 변동', `<span class="${cls}">${sgn(dv)}${fmt(Math.abs(dv), cfg.dec)} (${sgn(pc)}${Math.abs(pc).toFixed(1)}%)</span>`],
+      ['최저 (' + md(mn[0]) + ')', fmt(mn[1], cfg.dec)], ['최고 (' + md(mx[0]) + ')', fmt(mx[1], cfg.dec)]);
+  }
+  const mine = t.lines.find((l) => l.mine && l.pts.length);
+  if (mine) { const m = mine.pts[mine.pts.length - 1]; stats.push(['면세유(입력) 최근 (' + dstr(m[0]).slice(5).replace('-', '/') + ')', `${fmt(m[1], 1)} ${cfg.unit}`]); }
+  $('trendStats').innerHTML = stats.map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
+  const span = main ? `저장된 구간: ${dstr(main.pts[0][0])} ~ ${dstr(main.pts[main.pts.length - 1][0])} (${main.pts.length}개 일자). ` : '';
+  $('trendNote').textContent = span + (cfg.note === 'st'
+    ? '주유소 평균은 오피넷 수집값(전국 평균)이며, 오피넷 이력은 수집 시작 시 최근 7일치부터 쌓여 30일까지 늘어납니다. 면세유(입력)은 그날 입력한 단가가 이 기기(브라우저)에 최근 30일간 저장되며 다른 기기와는 공유되지 않습니다.'
+    : '수집한 날짜 기준 값입니다. 국제 가격은 발표가 며칠 늦어 최근 며칠은 비어 있을 수 있습니다.');
+}
+
+function trendPointer(clientX) {
+  const c = trendCtx; if (!c) return;
+  const wrap = $('trendChart'), x = clientX - wrap.getBoundingClientRect().left;
+  let best = c.dates[0], bd = Infinity;
+  for (const d of c.dates) { const dx = Math.abs(c.X(d) - x); if (dx < bd) { bd = dx; best = d; } }
+  const cx = c.X(best), cfg = c.t.cfg;
+  const ln = $('tcLine'); ln.setAttribute('x1', cx); ln.setAttribute('x2', cx); ln.setAttribute('visibility', 'visible');
+  let dots = '', rows = '';
+  for (const l of c.t.lines) {
+    const p = l.pts.find((q) => q[0] === best);
+    rows += `<div><i style="background:${l.color}"></i>${esc(l.name)} <b style="display:inline;color:#fff">${p ? fmt(p[1], l.mine ? 1 : cfg.dec) : '–'}</b></div>`;
+    if (p) dots += `<circle cx="${cx}" cy="${c.Y(p[1])}" r="5" style="fill:${l.color};stroke:var(--card)" stroke-width="2"/>`;
+  }
+  $('tcDots').innerHTML = dots;
+  const tip = $('trendTip'), d = dstr(best), wd = '일월화수목금토'[new Date(best).getUTCDay()];
+  tip.innerHTML = `<b>${d} (${wd})</b>${rows}<div style="color:#9fb4c0">${cfg.unit}</div>`;
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(c.W - tw, cx + 14 + tw > c.W ? cx - tw - 14 : cx + 14)) + 'px';
+}
+function trendLeave() { $('tcLine')?.setAttribute('visibility', 'hidden'); const d = $('tcDots'); if (d) d.innerHTML = ''; const t = $('trendTip'); if (t) t.style.display = 'none'; }
+
 function renderAll() { renderResult('diesel'); renderResult('gasoline'); renderScenario(); }
 
 function setUnit(u) {
@@ -474,7 +645,7 @@ function syncUnit() {
   document.querySelectorAll('[data-unitlabel]').forEach((s) => (s.textContent = unit === 'drum' ? '원/드럼' : '원/L'));
   document.querySelectorAll('.row input').forEach((i) => (i.placeholder = unit === 'drum' ? '예: 248,920' : '예: 1,244.6'));
 }
-function saveInputs() { for (const f of Object.keys(FUEL)) store.set('in_' + f, $('in_' + f).value); }
+function saveInputs() { for (const f of Object.keys(FUEL)) store.set('in_' + f, $('in_' + f).value); saveMine(); renderTrend(); }
 
 document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => setUnit(b.dataset.unit)));
 for (const f of Object.keys(FUEL)) {
@@ -500,6 +671,18 @@ $('presets').addEventListener('click', (e) => {
 });
 syncUnit();
 renderAll();
+renderTrend();
+$('trendTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; trendKey = b.dataset.k; store.set('trendKey', trendKey); renderTrend(); });
+$('trendDays').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; trendDays = Number(b.dataset.d); store.set('trendDays', String(trendDays)); renderTrend(); });
+{ const w = $('trendChart');
+  w.addEventListener('pointermove', (e) => trendPointer(e.clientX));
+  w.addEventListener('pointerdown', (e) => trendPointer(e.clientX));
+  w.addEventListener('pointerleave', trendLeave); }
+let rzT; window.addEventListener('resize', () => { cancelAnimationFrame(rzT); rzT = requestAnimationFrame(renderTrend); });
+fetch('history.json?t=' + Date.now(), { cache: 'no-store' })
+  .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then((h) => { H = h; renderTrend(); })
+  .catch(() => { histErr = true; renderTrend(); });
 document.querySelector('.results').addEventListener('click', (e) => {
   const q = e.target.closest('.resQ');
   document.querySelectorAll('.res.show').forEach((x) => (!q || x !== q.closest('.res')) && x.classList.remove('show'));

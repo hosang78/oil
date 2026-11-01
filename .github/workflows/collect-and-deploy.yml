@@ -2,13 +2,13 @@ name: 유가 수집 및 Pages 배포
 
 on:
   push:
-    branches: [main, ccr-441335df-37x8z8]
+    branches: [main]
   schedule:
     - cron: '23 * * * *' # 매시 23분 목표 (GitHub 사정으로 지연·누락이 잦음 — 실측 약 4시간 간격)
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # 가격 이력(data/history.json)을 저장소에 커밋하기 위함
   pages: write
   id-token: write
 
@@ -35,8 +35,21 @@ jobs:
           PREV_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data.json
         run: |
           mkdir -p site
-          node scripts/collect.mjs site/data.json
+          node scripts/collect.mjs site/data.json data/history.json
           cp index.html site/
+          cp data/history.json site/history.json
+      - name: 가격 이력 저장(커밋)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history.json
+          if git diff --cached --quiet; then
+            echo "이력 변경 없음"
+          else
+            git commit -m "chore: 가격 이력 갱신 [skip ci]"
+            git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
